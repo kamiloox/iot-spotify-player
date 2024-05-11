@@ -2,24 +2,12 @@ package main
 
 import (
 	"api/auth"
-	"encoding/json"
+	"api/player"
 	"log"
 	"net/http"
 
 	"github.com/joho/godotenv"
 )
-
-type playbackState string
-
-const (
-	PLAYING       playbackState = "PLAYING"
-	PAUSED        playbackState = "PAUSED"
-	NOT_AVAILABLE playbackState = "NOT_AVAILABLE"
-)
-
-type Player struct {
-	State playbackState `json:"state"`
-}
 
 func main() {
 	err := godotenv.Load("../.env")
@@ -30,19 +18,6 @@ func main() {
 
 	http.HandleFunc("/auth/callback", auth.Callback)
 	http.HandleFunc("/auth/login", auth.Authorize)
+	http.HandleFunc("/playback", player.GetPlayer)
 	http.ListenAndServe(":8080", nil)
-}
-
-func GetPlaybackState(w http.ResponseWriter, r *http.Request) {
-	player := Player{State: NOT_AVAILABLE}
-
-	res, err := json.Marshal(player)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(res)
 }
