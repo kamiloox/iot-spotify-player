@@ -1,40 +1,40 @@
 package auth
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"os"
+
+	"github.com/jackc/pgx/v5"
 )
 
-func Authorize(w http.ResponseWriter, r *http.Request) {
-	req, err := http.NewRequest("GET", "https://accounts.spotify.com/authorize", nil)
+type Token struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
 
-	if err != nil {
-		log.Print(err)
-		os.Exit(1)
-	}
+func Authorize(w http.ResponseWriter, r *http.Request) {
+	req, _ := http.NewRequest("GET", "https://accounts.spotify.com/authorize", nil)
 
 	q := req.URL.Query()
 	q.Add("response_type", "code")
 	q.Add("client_id", os.Getenv("SPOTIFY_CLIENT_ID"))
 	q.Add("scope", os.Getenv("SPOTIFY_SCOPE"))
 	q.Add("redirect_uri", os.Getenv("SPOTIFY_REDIRECT_URI"))
+	q.Add("state", r.URL.Query().Get("token"))
 	req.URL.RawQuery = q.Encode()
 
 	http.Redirect(w, r, req.URL.String(), http.StatusTemporaryRedirect)
 }
 
-func Callback(w http.ResponseWriter, r *http.Request) {
+func Callback(w http.ResponseWriter, r *http.Request, conn *pgx.Conn) {
 	code := r.URL.Query().Get("code")
+	boardToken := r.URL.Query().Get("state")
 
-	req, err := http.NewRequest("POST", "https://accounts.spotify.com/api/token", nil)
-
-	if err != nil {
-		log.Print(err)
-		os.Exit(1)
-	}
+	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", nil)
 
 	authHeader := "Basic " + base64.StdEncoding.EncodeToString([]byte(os.Getenv("SPOTIFY_CLIENT_ID")+":"+os.Getenv("SPOTIFY_CLIENT_SECRET")))
 
@@ -48,20 +48,16 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	req.URL.RawQuery = form.Encode()
 
 	client := &http.Client{}
-	res, err := client.Do(req)
+	res, _ := client.Do(req)
 
-	if err != nil {
-		log.Print(err)
-		os.Exit(1)
-	}
+	body, _ := io.ReadAll(res.Body)
 
-	body, err := io.ReadAll(res.Body)
+	var token Token
+	json.Unmarshal(body, &token)
 
-	if err != nil {
-		log.Print(err)
-		os.Exit(1)
-	}
+	query := "INSERT INTO auth (board_secure_token, spotify_access_token, spotify_refresh_token) VALUES ($1, $2, $3) ON CONFLICT (board_secure_token) DO UPDATE SET spotify_access_token=$2, spotify_refresh_token=$3"
+	conn.Exec(context.Background(), query, boardToken, token.AccessToken, token.RefreshToken)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(body)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("Credentials saved for token: " + boardToken + "\nYou can close this tab now."))
 }

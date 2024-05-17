@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/auth"
+	"api/database"
 	"api/player"
 	"log"
 	"net/http"
@@ -10,14 +11,21 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("../.env")
+	dotEnvError := godotenv.Load("../.env")
 
-	if err != nil {
+	if dotEnvError != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	http.HandleFunc("/auth/callback", auth.Callback)
+	conn := database.Connect()
+
 	http.HandleFunc("/auth/login", auth.Authorize)
-	http.HandleFunc("/playback", player.GetPlayer)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
+		auth.Callback(w, r, conn)
+	})
+	http.HandleFunc("/playback", func(w http.ResponseWriter, r *http.Request) {
+		player.Playback(w, r, conn)
+	})
+
+	http.ListenAndServe("127.0.0.1:8080", nil)
 }
