@@ -6,15 +6,16 @@ import (
 	"api/player"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	dotEnvError := godotenv.Load(".env")
+	err := godotenv.Load()
 
-	if dotEnvError != nil {
-		log.Fatal("Error loading .env file")
+	if err != nil {
+		log.Println(err)
 	}
 
 	conn := database.Connect()
@@ -27,5 +28,13 @@ func main() {
 		player.Playback(w, r, conn)
 	})
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(getAppPort(), nil)
+}
+
+func getAppPort() string {
+	if port, ok := os.LookupEnv("PORT"); ok {
+		return ":" + port
+	}
+
+	return ":http"
 }
