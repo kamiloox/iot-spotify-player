@@ -52,7 +52,6 @@ func FetchWithRefresh(req *http.Request, conn *pgx.Conn, boardToken string) (*ht
 		refreshed := Refresh(req, refreshToken)
 
 		query = "UPDATE auth SET spotify_access_token=$1 WHERE board_secure_token=$2"
-		conn.Exec(context.Background(), query, refreshed.AccessToken, boardToken)
 
 		req.Header.Set("Authorization", "Bearer "+refreshed.AccessToken)
 	}

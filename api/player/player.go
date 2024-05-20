@@ -9,7 +9,7 @@ import (
 )
 
 func Playback(w http.ResponseWriter, r *http.Request, conn *pgx.Conn) {
-	boardToken := r.URL.Query().Get("token")
+	boardToken := r.Header.Get("boardToken")
 
 	req, _ := http.NewRequest("GET", "https://api.spotify.com/v1/me/player", nil)
 

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	dotEnvError := godotenv.Load("../.env")
+	dotEnvError := godotenv.Load(".env")
 
 	if dotEnvError != nil {
 		log.Fatal("Error loading .env file")
@@ -27,5 +27,5 @@ func main() {
 		player.Playback(w, r, conn)
 	})
 
-	http.ListenAndServe("127.0.0.1:8080", nil)
+	http.ListenAndServe(":8080", nil)
 }
