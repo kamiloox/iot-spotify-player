@@ -7,7 +7,7 @@
 #include "credentials.h"
 
 HTTPClient http; 
-WiFiClient wifiClient;
+WiFiClientSecure wifiClient;
 
 String playbackPath = String(SERVER_ORIGIN) + "/playback";
 
@@ -25,6 +25,7 @@ unsigned long timerDelay = 1000;
 void setup() {
   Serial.begin(115200);
   WiFi.begin(SSID, SSID_PASSWORD);
+  wifiClient.setInsecure();
  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -49,7 +50,6 @@ void loop() {
 
     int httpCode = http.GET();
     String resp = http.getString();
-
 
     StaticJsonDocument<1000> doc;
     DeserializationError error = deserializeJson(doc, resp);
